@@ -48,6 +48,7 @@ void matrizCompartida(char *nombre_archivo_entrada, int chunk_lectura, int numer
     FILE *archivo_entrada = fopen(nombre_archivo_entrada, "rb");
 
     bool flag = true;
+    int cont_final = 0;
     
     if (archivo_entrada == NULL)
     {
@@ -55,75 +56,65 @@ void matrizCompartida(char *nombre_archivo_entrada, int chunk_lectura, int numer
         exit(EXIT_FAILURE);
     }
     // Sección paralela
-    #pragma omp parallel num_threads(numero_tareas)
+    #pragma omp parallel
     {
         #pragma omp single
         {
             for (int valor_t = 0; valor_t < numero_tareas; valor_t++) 
             {
                 #pragma omp task
-                printf("Tarea (Thread ID: %d)\n", omp_get_thread_num());
                 {
-                    // Mientras haya lineas por leer, flag = true
+                    //MIentras archivo no este vacio
                     while (flag)
                     {
                         char *linea_aux;
                         char linea[MAX];
                         char matriz[chunk_lectura][MAX];
                         int contador = 0, i_k, j_k;
-                        double u, v, visibilidad_real, visibilidad_im, peso_w, frec_obs, u_k, v_k;
+                        double u, v, w, visibilidad_real, visibilidad_im, peso_w, frec_obs, u_k, v_k, canal_espectral;
+
                         // EMPEZARA ACA LA SC???????????????????????????????????????????????????????????????
-                        for (int i = 0; i < chunk_lectura; i++)
-                        {
-                            #pragma omp critical
+                        for (int i = 0; i < chunk_lectura; i++){
+                            // Si no hay lineas por leer, flag = false
+                            if (fgets(linea, sizeof(linea), archivo_entrada) == NULL)
                             {
-                                //probar con fgets
-                                if (fgets(linea, sizeof(linea), archivo_entrada) == NULL)
-                                {
-                                    flag = false;
-                                    //break;
-                                }
-                                else{
-                                    // guardo la linea en matriz
-                                    strcpy(matriz[i], linea);
-                                    contador++;
-                                }
-                            } 
+                                flag = false;
+                            }
+                            else
+                            {
+                                #pragma omp critical
+                                contador++;
+                                strcpy(matriz[i], linea);
+                                //printf("Mi id tarea es: %d, mi id hilo es: %d, contador: %d\n", valor_t, omp_get_thread_num(), contador);
+                            }
                         }
+            
                         for (int i = 0; i < contador; i ++)
                         {
-                            
-                            linea_aux = strtok(matriz[i], ",");
-                            u = strtod(linea_aux, NULL);
-                            v = strtod(strtok(NULL, ","), NULL);
-                            linea_aux = strtok(NULL, ",");
-                            visibilidad_real = strtod(strtok(NULL, ","), NULL);
-                            visibilidad_im = strtod(strtok(NULL, ","), NULL);
-                            peso_w = strtod(strtok(NULL, ","), NULL);
-                            frec_obs = strtod(strtok(NULL, ","), NULL);
-                            
+                            sscanf(matriz[i], "%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf", &u, &v, &w, &visibilidad_real, &visibilidad_im, &peso_w, &frec_obs, &canal_espectral);
+
                             // Transformación de las coordenada u, v a longitud de onda
                             u_k = u * (frec_obs / VEL_LUZ);
                             v_k = v * (frec_obs / VEL_LUZ);
-                            //  Determina la posición de la matriz que corresponde la visibilidad
+                            //  Determina la posición de la matriz que correspondela visibilidad
                             i_k = round((u_k / delta_u) + tamanyo_imagen / 2);
                             j_k = round((v_k / delta_v) + tamanyo_imagen / 2);
 
-                            //printf("i_k: %d, j_k: %d\n", i_k, j_k);
                             // Acumula en matriz
                             #pragma omp critical
                             {
-                                //printf("dentro de critical\n");
+                                cont_final++;
                                 matriz_fr[i_k][j_k] += peso_w * visibilidad_real;
                                 matriz_fi[i_k][j_k] += peso_w * visibilidad_im;
                                 matriz_wr[i_k][j_k] += peso_w;
-                            }
+                            }                               
                         }
                     }
                 }
             }
         }
     }
+    printf("Contador final: %d\n", cont_final);
     // Cierro archivo
     fclose(archivo_entrada);
 }
@@ -131,8 +122,8 @@ void matrizCompartida(char *nombre_archivo_entrada, int chunk_lectura, int numer
 void escribirArchivoSalida(char *nombre_datos_grideados, int tamanyo_imagen){
     char nombre_datos_grideados_2[MAX];
     strcpy(nombre_datos_grideados_2, nombre_datos_grideados);
-    strcat(nombre_datos_grideados, "_r.raw");
-    strcat(nombre_datos_grideados_2, "_i.raw");
+    strcat(nombre_datos_grideados, "r.raw");
+    strcat(nombre_datos_grideados_2, "i.raw");
     FILE *archivo_salida_r = fopen(nombre_datos_grideados, "wb");
     FILE *archivo_salida_i = fopen(nombre_datos_grideados_2, "wb");
     
@@ -151,8 +142,17 @@ void normalizarMatrices(int tamanyo_imagen){
     {
         for (int j = 0; j < tamanyo_imagen; j++)
         {
-            matriz_fr[i][j] = matriz_fr[i][j] / matriz_wr[i][j];
-            matriz_fi[i][j] = matriz_fi[i][j] / matriz_wr[i][j];
+            if (matriz_wr[i][j] == 0)
+            {
+                matriz_fr[i][j] = 0.0;
+                matriz_fi[i][j] = 0.0;
+            }
+
+            else
+            {
+                matriz_fr[i][j] = matriz_fr[i][j] / matriz_wr[i][j];
+                matriz_fi[i][j] = matriz_fi[i][j] / matriz_wr[i][j];
+            }
         }
     }
 }
