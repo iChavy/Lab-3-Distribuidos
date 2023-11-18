@@ -263,6 +263,13 @@ void matrizCompartida(char *nombre_archivo_entrada, int chunk_lectura, int numer
 
 /*
 Descripción: Abre el archivo de entrada, crea n tareas y mientras no se haya leído todo el archivo, cada tarea lee un chunk de líneas del archivo de entrada, luego se calcula la posición de la matriz que corresponde a la visibilidad, acumula los resultados en la matriz local de cada tarea. Al finalizar, cada tarea acumula los resultados de su matriz local en las matrices globales.
+Entrada: nombre_archivo_entrada: char*. Puntero que apunta al primer caracter del nombre del archivo de entrada.
+         chunk_lectura: int que posee el valor del tamaño del chunk de líneas que se leerá del archivo de entrada.
+         numero_tareas: int que posee el valor del número de tareas que se crearán.
+         tamanyo_imagen: int que posee el valor del tamaño de la imagen.
+         delta_u: double que posee el valor de la distancia entre los puntos de la transformada de Fourier V(u, v).
+         delta_v: double que posee el valor de la distancia entre los puntos de la transformada de Fourier V(u, v).
+Salida: No posee retorno.
 */
 void matrizLocal(char *nombre_archivo_entrada, int chunk_lectura, int numero_tareas, int tamanyo_imagen, double delta_u, double delta_v)// REVISAR COMENTARIOS<<<<<<<<<<<
 {

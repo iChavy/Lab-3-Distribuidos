@@ -34,15 +34,14 @@ v2 = complex(re2, im2);
 I =  fftshift(ifft2(v1));
 J =  fftshift(ifft2(v2));
 
-% Muestra las imágenes en una sola figura usando subplot
+% Muestra la primera imagen en una figura
 figure;
-
-subplot(1, 2, 1);
 imagesc(abs(I));
 colormap('hot');
 title('Imagen resultante con matrices compartidas');
 
-subplot(1, 2, 2);
+% Muestra la segunda imagen en otra figura
+figure;
 imagesc(abs(J));
 colormap('hot');
 title('Imagen resultante con matrices locales');
