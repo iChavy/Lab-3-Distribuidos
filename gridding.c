@@ -211,7 +211,11 @@ void matrizCompartida(char *nombre_archivo_entrada, int chunk_lectura, int numer
                     {
                         char *linea_aux;
                         char linea[MAX];
-                        char matriz[chunk_lectura][MAX];
+                        char **matriz = (char **)malloc(chunk_lectura * sizeof(char *));
+                        for (int i = 0; i < chunk_lectura; i++) 
+                        {
+                            matriz[i] = (char *)malloc(MAX * sizeof(char));
+                        }
                         int contador = 0, i_k, j_k;
                         double u, v, w, visibilidad_real, visibilidad_im, peso_w, frec_obs, u_k, v_k, canal_espectral;
 
@@ -317,7 +321,12 @@ void matrizLocal(char *nombre_archivo_entrada, int chunk_lectura, int numero_tar
                     {
                         char *linea_aux;
                         char linea[MAX];
-                        char matriz[chunk_lectura][MAX];
+                        char **matriz = (char **)malloc(chunk_lectura * sizeof(char *));
+                        for (int i = 0; i < chunk_lectura; i++) 
+                        {
+                            matriz[i] = (char *)malloc(MAX * sizeof(char));
+                        }
+                        
                         int contador = 0, i_k, j_k;
                         double u, v, w, visibilidad_real, visibilidad_im, peso_w, frec_obs, u_k, v_k, canal_espectral;                        
                         #pragma omp critical
