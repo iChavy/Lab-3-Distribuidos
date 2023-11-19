@@ -182,19 +182,17 @@ Entrada: nombre_archivo_entrada: char*. Puntero que apunta al primer caracter de
          delta_v: double que posee el valor de la distancia entre los puntos de la transformada de Fourier V(u, v).
 Salida: No posee retorno.
 */
-void matrizCompartida(char *nombre_archivo_entrada, int chunk_lectura, int numero_tareas, int tamanyo_imagen, double delta_u, double delta_v) //<<<<< revisar comentarios dentro de la funcion
+void matrizCompartida(char *nombre_archivo_entrada, int chunk_lectura, int numero_tareas, int tamanyo_imagen, double delta_u, double delta_v)
 {
     // Abro archivo para lectura binaria
     FILE *archivo_entrada = fopen(nombre_archivo_entrada, "rb");
-
     bool flag = true;
-    int cont_final = 0; // BORRAR <<<<<<<<<<<<<<<<
     
     // Verifica que el archivo se abrió correctamente
     if (archivo_entrada == NULL)
     {
         fprintf(stderr, "No se ha podido abrir el archivo de entrada\n");
-        exit(EXIT_FAILURE);//// <<<<<<<<<<<<<<<<< buscar manejo de errores
+        exit(EXIT_FAILURE);
     }
 
     // Sección paralela
@@ -221,20 +219,21 @@ void matrizCompartida(char *nombre_archivo_entrada, int chunk_lectura, int numer
 
                         #pragma omp critical
                         {
-                        // Lee n chunk de líneas del archivo
-                        for (int i = 0; i < chunk_lectura; i++){
-                            // Si no hay líneas por leer, flag = false
-                            if (fgets(linea, sizeof(linea), archivo_entrada) == NULL)
+                            // Lee n chunk de líneas del archivo
+                            for (int i = 0; i < chunk_lectura; i++)
                             {
-                                flag = false;
+                                // Si no hay líneas por leer, flag = false
+                                if (fgets(linea, sizeof(linea), archivo_entrada) == NULL)
+                                {
+                                    flag = false;
+                                }
+                                else
+                                {
+                                    contador++;
+                                    // Almacena la línea leída en una matriz
+                                    strcpy(matriz[i], linea);
+                                }
                             }
-                            else
-                            {
-                                contador++;
-                                // Almacena la línea leída en una matriz
-                                strcpy(matriz[i], linea);
-                            }
-                        }
                         }
 
                         // Recorre la matriz que posee las líneas leídas, extrae los valores, realiza cálculos y acumula en las matrices globales
@@ -253,7 +252,6 @@ void matrizCompartida(char *nombre_archivo_entrada, int chunk_lectura, int numer
                             // Acumula en las matrices globales 
                             #pragma omp critical
                             {
-                                cont_final++;// BORRAR <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
                                 matriz_fr[i_k][j_k] += peso_w * visibilidad_real;
                                 matriz_fi[i_k][j_k] += peso_w * visibilidad_im;
                                 matriz_wr[i_k][j_k] += peso_w;
@@ -264,7 +262,6 @@ void matrizCompartida(char *nombre_archivo_entrada, int chunk_lectura, int numer
             }
         }
     }
-    printf("Contador final: %d\n", cont_final); // BORRAR <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     // Cierro archivo
     fclose(archivo_entrada);
 }
@@ -279,22 +276,31 @@ Entrada: nombre_archivo_entrada: char*. Puntero que apunta al primer caracter de
          delta_v: double que posee el valor de la distancia entre los puntos de la transformada de Fourier V(u, v).
 Salida: No posee retorno.
 */
-void matrizLocal(char *nombre_archivo_entrada, int chunk_lectura, int numero_tareas, int tamanyo_imagen, double delta_u, double delta_v)// REVISAR COMENTARIOS<<<<<<<<<<<
+void matrizLocal(char *nombre_archivo_entrada, int chunk_lectura, int numero_tareas, int tamanyo_imagen, double delta_u, double delta_v)
 {
     // Abro archivo para lectura binaria
     FILE *archivo_entrada = fopen(nombre_archivo_entrada, "rb");
-
     bool flag = true;
-    int cont_final = 0; // BORRAR <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
     
     if (archivo_entrada == NULL)
     {
         fprintf(stderr, "No se ha podido abrir el archivo de entrada\n");
-        exit(EXIT_FAILURE); // BUSCAR MANEJO DE ERRORES <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+        exit(EXIT_FAILURE);
+    }
+
+    double **matriz_fr_local = (double **)malloc(tamanyo_imagen * sizeof(double *));
+    double **matriz_fi_local = (double **)malloc(tamanyo_imagen * sizeof(double *));
+    double **matriz_wr_local = (double **)malloc(tamanyo_imagen * sizeof(double *));
+
+    for (int i = 0; i < tamanyo_imagen; i++)
+    {
+        matriz_fr_local[i] = (double *)malloc(tamanyo_imagen * sizeof(double));
+        matriz_fi_local[i] = (double *)malloc(tamanyo_imagen * sizeof(double));
+        matriz_wr_local[i] = (double *)malloc(tamanyo_imagen * sizeof(double));
     }
 
     // Sección paralela
-    #pragma omp parallel //private(matriz_fr_local, matriz_fi_local, matriz_wr_local)
+    #pragma omp parallel
     {
         #pragma omp single
         {
@@ -302,18 +308,6 @@ void matrizLocal(char *nombre_archivo_entrada, int chunk_lectura, int numero_tar
             {                
                 #pragma omp task
                 {
-                    // mover al comienzo y probar <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                    double **matriz_fr_local = (double **)malloc(tamanyo_imagen * sizeof(double *));
-                    double **matriz_fi_local = (double **)malloc(tamanyo_imagen * sizeof(double *));
-                    double **matriz_wr_local = (double **)malloc(tamanyo_imagen * sizeof(double *));
-
-                    for (int i = 0; i < tamanyo_imagen; i++)
-                    {
-                        matriz_fr_local[i] = (double *)malloc(tamanyo_imagen * sizeof(double));
-                        matriz_fi_local[i] = (double *)malloc(tamanyo_imagen * sizeof(double));
-                        matriz_wr_local[i] = (double *)malloc(tamanyo_imagen * sizeof(double));
-                    }
-                    
                     inicializarMatricesLocales(matriz_fr_local, matriz_fi_local, matriz_wr_local, tamanyo_imagen);
 
                     // Mientras el archivo no esté vacío, flag = true
@@ -337,14 +331,13 @@ void matrizLocal(char *nombre_archivo_entrada, int chunk_lectura, int numero_tar
                             {
                                 flag = false;
                             }
+                            
                             else
                             {
                                 contador++;
                                 // Almacena la línea leída en una matriz
                                 strcpy(matriz[i], linea);                            
-                                cont_final++;   // BORRAR <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-                            }
-                                               
+                            }           
                         }
                         
                         // Recorre la matriz que posee las líneas leídas, extrae los valores, realiza cálculos y acumula en las matrices locales que posee la tarea
@@ -371,9 +364,6 @@ void matrizLocal(char *nombre_archivo_entrada, int chunk_lectura, int numero_tar
                     {
                         for (int j = 0; j < tamanyo_imagen; j++)
                         {
-                            //matriz_fr_local_global[i][j] += matriz_fr_local[i][j];
-                            //matriz_fi_local_global[i][j] += matriz_fi_local[i][j];
-                            //matriz_wr_local_global[i][j] += matriz_wr_local[i][j];  
                             matriz_fr[i][j] += matriz_fr_local[i][j];
                             matriz_fi[i][j] += matriz_fi_local[i][j];
                             matriz_wr[i][j] += matriz_wr_local[i][j];                      
@@ -383,17 +373,6 @@ void matrizLocal(char *nombre_archivo_entrada, int chunk_lectura, int numero_tar
             }
         }
     }
-
-    /*for (int i = 0; i < tamanyo_imagen; i++)
-                {
-                    free(matriz_fr_local[i]);
-                    free(matriz_fi_local[i]);
-                    free(matriz_wr_local[i]);
-                }
-                free(matriz_fr_local);
-                free(matriz_fi_local);
-                free(matriz_wr_local);*/
-    printf("Contador final: %d\n", cont_final);// BORRAR <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
     // Cierro archivo
     fclose(archivo_entrada);
@@ -411,7 +390,6 @@ Salida: Retorna 0 si el programa finaliza correctamente.
 */
 int main(int argc, char *argv[])
 {
-    // Nombre del archivo de entrada y de salida
     char *nombre_archivo_entrada, *nombre_datos_grideados;
     double delta_x, delta_u, delta_v;
     int tamanyo_imagen, chunk_lectura, numero_tareas, opcion;
@@ -453,7 +431,7 @@ int main(int argc, char *argv[])
     delta_u = 1 / (tamanyo_imagen * delta_x);
     delta_v = 1 / (tamanyo_imagen * delta_x);
     
-    asignarMemoria(tamanyo_imagen);
+    asignarMemoria(tamanyo_imagen);        
     inicializarMatrices(tamanyo_imagen);
 
     tiempo_inicio = omp_get_wtime();
@@ -463,8 +441,6 @@ int main(int argc, char *argv[])
     tiempo_fin = omp_get_wtime();
     tiempo = tiempo_fin - tiempo_inicio;
     printf("Tiempo de ejecución con matrices compartidas: %f\n", tiempo);
-
-    // Escribir en archivo de salida
     escribirArchivoSalidaGlobal(nombre_datos_grideados, tamanyo_imagen);
 
     //////////////////////////////////// Programa con matrices locales ///////////////////////////////////////////
@@ -476,13 +452,9 @@ int main(int argc, char *argv[])
     tiempo_fin = omp_get_wtime();
     tiempo = tiempo_fin - tiempo_inicio;
     printf("Tiempo de ejecución con matrices locales: %f\n", tiempo);
-
-    // Escribir en archivo de salida
     escribirArchivoSalidaLocal(nombre_datos_grideados, tamanyo_imagen);
 
     //Libero memoria
     liberarMatrices(tamanyo_imagen);
-    printf("Fin del programa local\n");
-
     return 0;
 }
