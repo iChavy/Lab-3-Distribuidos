@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <time.h>
 #include <math.h>
+#include <omp.h>
 
 #define MAX 256
 #define VEL_LUZ 299792458
@@ -214,6 +215,8 @@ void matrizCompartida(char *nombre_archivo_entrada, int chunk_lectura, int numer
                         int contador = 0, i_k, j_k;
                         double u, v, w, visibilidad_real, visibilidad_im, peso_w, frec_obs, u_k, v_k, canal_espectral;
 
+                        #pragma omp critical
+                        {
                         // Lee n chunk de líneas del archivo
                         for (int i = 0; i < chunk_lectura; i++){
                             // Si no hay líneas por leer, flag = false
@@ -227,6 +230,7 @@ void matrizCompartida(char *nombre_archivo_entrada, int chunk_lectura, int numer
                                 // Almacena la línea leída en una matriz
                                 strcpy(matriz[i], linea);
                             }
+                        }
                         }
 
                         // Recorre la matriz que posee las líneas leídas, extrae los valores, realiza cálculos y acumula en las matrices globales
@@ -316,7 +320,7 @@ void matrizLocal(char *nombre_archivo_entrada, int chunk_lectura, int numero_tar
                         char matriz[chunk_lectura][MAX];
                         int contador = 0, i_k, j_k;
                         double u, v, w, visibilidad_real, visibilidad_im, peso_w, frec_obs, u_k, v_k, canal_espectral;                        
-                        
+                        #pragma omp critical
                         for (int i = 0; i < chunk_lectura; i++)
                         {
                             // Si no hay líneas por leer, flag = false
@@ -333,6 +337,7 @@ void matrizLocal(char *nombre_archivo_entrada, int chunk_lectura, int numero_tar
                             }
                                                
                         }
+                        
                         // Recorre la matriz que posee las líneas leídas, extrae los valores, realiza cálculos y acumula en las matrices locales que posee la tarea
                         for (int i = 0; i < contador; i ++)
                         {
@@ -402,8 +407,7 @@ int main(int argc, char *argv[])
     double delta_x, delta_u, delta_v;
     int tamanyo_imagen, chunk_lectura, numero_tareas, opcion;
 
-    clock_t inicio, fin;
-    double tiempo;
+    double tiempo_inicio, tiempo_fin, tiempo;
 
     while ((opcion = getopt(argc, argv, "i:o:d:N:c:t:")) != -1)
     {
@@ -443,12 +447,12 @@ int main(int argc, char *argv[])
     asignarMemoria(tamanyo_imagen);
     inicializarMatrices(tamanyo_imagen);
 
-    inicio = clock();
+    tiempo_inicio = omp_get_wtime();
     matrizCompartida(nombre_archivo_entrada, chunk_lectura, numero_tareas, tamanyo_imagen, delta_u, delta_v);
     // Normalizar matrices
     normalizarMatrices(tamanyo_imagen);
-    fin = clock();
-    tiempo = (double)(fin - inicio) / CLOCKS_PER_SEC;
+    tiempo_fin = omp_get_wtime();
+    tiempo = tiempo_fin - tiempo_inicio;
     printf("Tiempo de ejecución con matrices compartidas: %f\n", tiempo);
 
     // Escribir en archivo de salida
@@ -457,11 +461,11 @@ int main(int argc, char *argv[])
     //////////////////////////////////// Programa con matrices locales ///////////////////////////////////////////
     inicializarMatrices(tamanyo_imagen);
 
-    inicio = clock();
+    tiempo_inicio = omp_get_wtime();
     matrizLocal(nombre_archivo_entrada, chunk_lectura, numero_tareas, tamanyo_imagen, delta_u, delta_v);
     normalizarMatrices(tamanyo_imagen);
-    fin = clock();
-    tiempo = (double)(fin - inicio) / CLOCKS_PER_SEC;
+    tiempo_fin = omp_get_wtime();
+    tiempo = tiempo_fin - tiempo_inicio;
     printf("Tiempo de ejecución con matrices locales: %f\n", tiempo);
 
     // Escribir en archivo de salida
